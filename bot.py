@@ -6,15 +6,16 @@ import os
 import sys
 import getpass
 
-from nio import AsyncClient, LoginResponse
+from nio import AsyncClient, AsyncClientConfig, LoginResponse
 
 
 async def send_message(content: dict, room_id: str, client: AsyncClient) -> None:
     if await is_in_room(room_id, client):
         await client.room_send(
             room_id,
-            message_type="m.room.message",
-            content=content
+            "m.room.message",
+            content,
+            ignore_unverified_devices=True
         )
 
 
@@ -39,12 +40,26 @@ async def get_joined_rooms(client: AsyncClient) -> str:
     return joined_rooms.rooms
 
 
-async def get_credentials(user_id: str, device_id: str, home_server: str):
-    client = AsyncClient(home_server, user_id)
+async def get_credentials(user_id: str, device_id: str, home_server: str, store_path: str):
+    client_config = AsyncClientConfig(
+        max_limit_exceeded=0,
+        max_timeouts=0,
+        store_sync_tokens=True,
+        encryption_enabled=True,
+    )
+    client = AsyncClient(
+        home_server,
+        user_id,
+        store_path=store_path,
+        config=client_config
+    )
     password = getpass.getpass()
     response = await client.login(password, device_id)
     await client.close()
-    return response
+
+    if (isinstance(response, LoginResponse)):
+        return response
+    return None
 
 
 def save_credentials(path: str, response: LoginResponse, home_server: str) -> None:
@@ -60,11 +75,21 @@ def save_credentials(path: str, response: LoginResponse, home_server: str) -> No
         )
 
 
-def get_client(user_id: str, device_id: str, home_server: str, access_token: str) -> AsyncClient:
-    client = AsyncClient(home_server)
-    client.access_token = access_token
-    client.user_id = user_id
-    client.device_id = device_id
+def get_client(user_id: str, device_id: str, home_server: str, access_token: str, store_path: str) -> AsyncClient:
+    client_config = AsyncClientConfig(
+        max_limit_exceeded=0,
+        max_timeouts=0,
+        store_sync_tokens=True,
+        encryption_enabled=True,
+    )
+    client = AsyncClient(
+        home_server,
+        user_id,
+        device_id=device_id,
+        store_path=store_path,
+        config=client_config
+    )
+    client.restore_login(user_id, device_id, access_token)
     return client
 
 
@@ -90,8 +115,12 @@ def does_file_exists(path: str) -> bool:
 
 async def main() -> None:
     credentials_path = "credentials.json"
+    store_path = "store/"
     bot_path = "bot.json"
     bot_config = get_bot_config(bot_path)
+
+    if not os.path.exists(store_path):
+        os.makedirs(store_path)
 
     if bot_config is None:
         return
@@ -100,7 +129,8 @@ async def main() -> None:
         credentials = await get_credentials(
             bot_config["user_id"],
             bot_config["device_id"],
-            bot_config["home_server"]
+            bot_config["home_server"],
+            store_path
         )
         save_credentials(
             credentials_path,
@@ -113,17 +143,28 @@ async def main() -> None:
         bot_config["user_id"],
         bot_config["device_id"],
         bot_config["home_server"],
-        credentials["access_token"])
+        credentials["access_token"],
+        store_path
+    )
+
+    if client.should_upload_keys:
+        await client.keys_upload()
+
+    await join_room(bot_config["testing_room"], client)
 
     await send_message(
         {
             "msgtype": "m.text",
-            "body": "Hello world!"
+            "body": "Google\nhttps://www.google.com.au"
         },
-        bot_config["testing_room"],
+        "!rdrpBawICOKvRExzeK:matcha-tea.xyz",
         client
     )
 
     await client.close()
 
-asyncio.get_event_loop().run_until_complete(main())
+if __name__ == "__main__":
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        pass
