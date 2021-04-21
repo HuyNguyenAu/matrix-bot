@@ -6,7 +6,7 @@ import os
 import sys
 import getpass
 
-from nio import AsyncClient, AsyncClientConfig, LoginResponse, EnableEncryptionBuilder
+from nio import AsyncClient, AsyncClientConfig, LoginResponse
 
 
 async def send_message(content: dict, room_id: str, client: AsyncClient) -> None:
@@ -62,14 +62,14 @@ async def get_credentials(user_id: str, device_id: str, home_server: str, store_
     return None
 
 
-def save_credentials(path: str, response: LoginResponse, home_server: str) -> None:
+def save_credentials(user_id: str, device_id: str, home_server: str, access_token: str, path: str) -> None:
     with open(path, "w") as file:
         json.dump(
             {
                 "homeserver": home_server,
-                "user_id": response.user_id,
-                "device_id": response.device_id,
-                "access_token": response.access_token
+                "user_id": user_id,
+                "device_id": device_id,
+                "access_token": access_token
             },
             file
         )
@@ -137,9 +137,10 @@ async def main() -> None:
             store_path
         )
         save_credentials(
-            credentials_path,
-            credentials,
-            bot_config["home_server"]
+            credentials.user_id,
+            credentials.device_id,
+            credentials.access_token,
+            credentials_path
         )
 
     credentials = load_credentials(credentials_path)
@@ -159,14 +160,14 @@ async def main() -> None:
     await client.sync(timeout=30000, full_state=True)
 
     await send_message(
-            {
-                "msgtype": "m.text",
-                "body": "Google\nhttps://www.google.com.au"
-            },
-            bot_config["testing_room"],
-            client
-        )
-        
+        {
+            "msgtype": "m.text",
+            "body": "Google\nhttps://www.google.com.au"
+        },
+        bot_config["testing_room"],
+        client
+    )
+
     await client.close()
 
 if __name__ == "__main__":
