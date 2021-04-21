@@ -77,7 +77,7 @@ def save_credentials(user_id: str, device_id: str, home_server: str, access_toke
         )
 
 
-def get_client(user_id: str, device_id: str, home_server: str, access_token: str, store_path: str) -> AsyncClient:
+def get_client(bot_config: dict, credentials_path: str, store_path: str) -> AsyncClient:
     client_config = AsyncClientConfig(
         max_limit_exceeded=0,
         max_timeouts=0,
@@ -85,16 +85,20 @@ def get_client(user_id: str, device_id: str, home_server: str, access_token: str
         encryption_enabled=True,
     )
     client = AsyncClient(
-        home_server,
-        user_id,
-        device_id=device_id,
-        store_path=store_path,
-        config=client_config
+        bot_config["home_server"],
+        bot_config["user_id"],
+        bot_config["device_id"],
+        store_path,
+        client_config,
+        True
     )
+
+    credentials = load_credentials(credentials_path)
+
     client.restore_login(
-        user_id=user_id,
-        device_id=device_id,
-        access_token=access_token
+        bot_config["user_id"],
+        bot_config["device_id"],
+        credentials["access_token"]
     )
     return client
 
@@ -119,19 +123,7 @@ def does_file_exists(file_path: str) -> bool:
     return False
 
 
-async def main() -> None:
-    credentials_path = "credentials.json"
-    store_path = "store"
-    bot_path = "bot.json"
-    bot_config = get_bot_config(bot_path)
-    news_path = "news.txt"
-
-    if not path.exists(store_path):
-        makedirs(store_path)
-
-    if bot_config is None:
-        return
-
+async def check_credentials(bot_config: dict, credentials_path: str, store_path: str) -> None:
     if not does_file_exists(credentials_path):
         credentials = await get_credentials(
             bot_config["user_id"],
@@ -146,50 +138,6 @@ async def main() -> None:
             credentials.access_token,
             credentials_path
         )
-
-    credentials = load_credentials(credentials_path)
-    client = get_client(
-        bot_config["user_id"],
-        bot_config["device_id"],
-        bot_config["home_server"],
-        credentials["access_token"],
-        store_path
-    )
-
-    # await leave_room(bot_config["testing_room"], client)
-    await join_room(bot_config["testing_room"], client)
-
-    if client.should_upload_keys:
-        await client.keys_upload()
-
-    sync = await client.sync(timeout=30000, full_state=True)
-    links = await get_room_links(bot_config["testing_room"], sync, client)
-    y_news = get_y_news(links)
-
-    if y_news is not None:
-        await send_message(
-            {
-                "msgtype": "m.text",
-                "body": y_news
-            },
-            bot_config["testing_room"],
-            client
-        )
-
-    links = await get_room_links(bot_config["testing_room"], sync, client)
-    the_hacker_news = get_the_hacker_news(links)
-
-    if the_hacker_news is not None:
-        await send_message(
-            {
-                "msgtype": "m.text",
-                "body": the_hacker_news
-            },
-            bot_config["testing_room"],
-            client
-        )
-
-    await client.close()
 
 
 async def get_room_links(room_id: str, sync: SyncResponse, client: AsyncClient) -> list:
@@ -213,8 +161,9 @@ async def get_room_links(room_id: str, sync: SyncResponse, client: AsyncClient) 
     return links
 
 
-def get_the_hacker_news(existing_links: list) -> str:
+def get_the_hacker_news(existing_links: list) -> (str, list):
     news = []
+    new_links = []
     resource = request.urlopen("https://thehackernews.com/")
     page = html.fromstring(resource.read().decode(
         resource.headers.get_content_charset()))
@@ -227,17 +176,22 @@ def get_the_hacker_news(existing_links: list) -> str:
             continue
 
         news.append(f"{title}\n{link}")
+        new_links.append(link)
+
+    new_links += existing_links
 
     if len(news) <= 0:
-        return None
+        return (None, new_links)
 
     news.insert(0, "The Hacker News")
     news.append("\n")
-    return "\n\n".join(news)
+
+    return ("\n\n".join(news), new_links)
 
 
-def get_y_news(existing_links: list) -> str:
+def get_y_news(existing_links: list) -> (str, list):
     news = []
+    new_links = []
     resource = request.urlopen("https://news.ycombinator.com/")
     page = html.fromstring(resource.read().decode(
         resource.headers.get_content_charset()))
@@ -250,14 +204,69 @@ def get_y_news(existing_links: list) -> str:
             continue
 
         news.append(f"{title}\n{link}")
+        new_links.append(link)
+
+    new_links += existing_links
 
     if len(news) <= 0:
-        return None
+        return (None, new_links)
 
     news.insert(0, "Hacker News")
     news.append("\n")
-    return "\n\n".join(news)
 
+    return ("\n\n".join(news), new_links)
+
+
+async def send_news(bot_config: dict, sync: SyncResponse, client: AsyncClient) -> None:
+    links = await get_room_links(bot_config["news_room"], sync, client)
+    y_news, new_links = get_y_news(links)
+    the_hacker_news, new_links = get_the_hacker_news(new_links)
+    news = ""
+
+    if y_news is not None:
+        news += y_news
+
+    if the_hacker_news is not None:
+        news += the_hacker_news
+
+    await send_message(
+        {
+            "msgtype": "m.text",
+            "body": news
+        },
+        bot_config["news_room"],
+        client
+    )
+
+
+async def main() -> None:
+    credentials_path = "credentials.json"
+    store_path = "store"
+    bot_path = "bot.json"
+    bot_config = get_bot_config(bot_path)
+    news_path = "news.txt"
+
+    if not path.exists(store_path):
+        makedirs(store_path)
+
+    if bot_config is None:
+        return
+
+    await check_credentials(bot_config, credentials_path, store_path)
+
+    client = get_client(bot_config, credentials_path, store_path)
+
+    # await leave_room(bot_config["news_room"], client)
+    await join_room(bot_config["news_room"], client)
+
+    if client.should_upload_keys:
+        await client.keys_upload()
+
+    sync = await client.sync(timeout=30000, full_state=True)
+
+    await send_news(bot_config, sync, client)
+
+    await client.close()
 
 if __name__ == "__main__":
     try:
