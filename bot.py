@@ -6,7 +6,7 @@ import os
 import sys
 import getpass
 
-from nio import AsyncClient, AsyncClientConfig, LoginResponse
+from nio import AsyncClient, AsyncClientConfig, LoginResponse, EnableEncryptionBuilder
 
 
 async def send_message(content: dict, room_id: str, client: AsyncClient) -> None:
@@ -54,7 +54,7 @@ async def get_credentials(user_id: str, device_id: str, home_server: str, store_
         config=client_config
     )
     password = getpass.getpass()
-    response = await client.login(password, device_id)
+    response = await client.login(password, device_name=device_id)
     await client.close()
 
     if (isinstance(response, LoginResponse)):
@@ -89,7 +89,11 @@ def get_client(user_id: str, device_id: str, home_server: str, access_token: str
         store_path=store_path,
         config=client_config
     )
-    client.restore_login(user_id, device_id, access_token)
+    client.restore_login(
+        user_id=user_id,
+        device_id=device_id,
+        access_token=access_token
+    )
     return client
 
 
@@ -115,7 +119,7 @@ def does_file_exists(path: str) -> bool:
 
 async def main() -> None:
     credentials_path = "credentials.json"
-    store_path = "store/"
+    store_path = "store"
     bot_path = "bot.json"
     bot_config = get_bot_config(bot_path)
 
@@ -147,20 +151,22 @@ async def main() -> None:
         store_path
     )
 
+    await join_room(bot_config["testing_room"], client)
+
     if client.should_upload_keys:
         await client.keys_upload()
 
-    await join_room(bot_config["testing_room"], client)
+    await client.sync(timeout=30000, full_state=True)
 
     await send_message(
-        {
-            "msgtype": "m.text",
-            "body": "Google\nhttps://www.google.com.au"
-        },
-        "!rdrpBawICOKvRExzeK:matcha-tea.xyz",
-        client
-    )
-
+            {
+                "msgtype": "m.text",
+                "body": "Google\nhttps://www.google.com.au"
+            },
+            bot_config["testing_room"],
+            client
+        )
+        
     await client.close()
 
 if __name__ == "__main__":
