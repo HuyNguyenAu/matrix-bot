@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from asyncio import run
+from asyncio import run, wait
 from json import dump, load
 from os import path, makedirs
 from getpass import getpass
@@ -40,6 +40,23 @@ async def is_in_room(room_id: str, client: AsyncClient) -> bool:
 async def get_joined_rooms(client: AsyncClient) -> str:
     joined_rooms = await client.joined_rooms()
     return joined_rooms.rooms
+
+
+async def check_credentials(bot_config: dict, credentials_path: str, store_path: str) -> None:
+    if not does_file_exists(credentials_path):
+        credentials = await get_credentials(
+            bot_config["user_id"],
+            bot_config["device_id"],
+            bot_config["home_server"],
+            store_path
+        )
+        save_credentials(
+            credentials.user_id,
+            credentials.device_id,
+            bot_config["home_server"],
+            credentials.access_token,
+            credentials_path
+        )
 
 
 async def get_credentials(user_id: str, device_id: str, home_server: str, store_path: str) -> LoginResponse:
@@ -103,13 +120,6 @@ def get_client(bot_config: dict, credentials_path: str, store_path: str) -> Asyn
     return client
 
 
-def get_bot_config(path: str) -> str:
-    if does_file_exists(path):
-        with open(path, "r") as file:
-            return load(file)
-    return None
-
-
 def load_credentials(path: str) -> str:
     if does_file_exists(path):
         with open(path, "r") as file:
@@ -123,21 +133,11 @@ def does_file_exists(file_path: str) -> bool:
     return False
 
 
-async def check_credentials(bot_config: dict, credentials_path: str, store_path: str) -> None:
-    if not does_file_exists(credentials_path):
-        credentials = await get_credentials(
-            bot_config["user_id"],
-            bot_config["device_id"],
-            bot_config["home_server"],
-            store_path
-        )
-        save_credentials(
-            credentials.user_id,
-            credentials.device_id,
-            bot_config["home_server"],
-            credentials.access_token,
-            credentials_path
-        )
+def get_bot_config(path: str) -> str:
+    if does_file_exists(path):
+        with open(path, "r") as file:
+            return load(file)
+    return None
 
 
 async def get_room_links(room_id: str, sync: SyncResponse, client: AsyncClient) -> list:
@@ -218,10 +218,10 @@ def get_y_news(existing_links: list) -> (str, list):
 
 
 async def send_news(bot_config: dict, sync: SyncResponse, client: AsyncClient) -> None:
+    news = ""
     links = await get_room_links(bot_config["news_room"], sync, client)
     y_news, new_links = get_y_news(links)
     the_hacker_news, new_links = get_the_hacker_news(new_links)
-    news = ""
 
     if y_news is not None:
         news += y_news
@@ -256,17 +256,20 @@ async def main() -> None:
 
     client = get_client(bot_config, credentials_path, store_path)
 
-    # await leave_room(bot_config["news_room"], client)
-    await join_room(bot_config["news_room"], client)
+    try:
+        # await leave_room(bot_config["news_room"], client)
+        await join_room(bot_config["news_room"], client)
 
-    if client.should_upload_keys:
-        await client.keys_upload()
+        if client.should_upload_keys:
+            await client.keys_upload()
 
-    sync = await client.sync(timeout=30000, full_state=True)
+        sync = await client.sync(timeout=30000, full_state=True)
 
-    await send_news(bot_config, sync, client)
+        await send_news(bot_config, sync, client)
 
-    await client.close()
+    finally:
+        await client.close()
+
 
 if __name__ == "__main__":
     try:
