@@ -8,8 +8,7 @@ from bot import Bot
 
 async def main() -> None:
     room_id = sys.argv[1]
-    config = Config()
-    bot = Bot(config)
+    bot = Bot()
 
     try:
         await bot.join_room(room_id)

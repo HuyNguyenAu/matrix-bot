@@ -4,14 +4,14 @@ import nio
 
 
 class Bot:
-    def __init__(self, config: Config):
+    def __init__(self):
         self.__client_config = nio.AsyncClientConfig(
             max_limit_exceeded=0,
             max_timeouts=0,
             store_sync_tokens=True,
             encryption_enabled=True,
         )
-        self.__config = config
+        self.__config = Config()
         self.__client = self.__load_client()
         self.__sync = None
 
