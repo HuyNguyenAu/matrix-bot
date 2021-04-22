@@ -2,7 +2,8 @@ import json
 
 
 class Config:
-    def __init__(self, path):
+    def __init__(self):
+        path = "config.json"
         config = self.__load_config(path)
 
         self.__user_id = config["bot"]["user_id"]
@@ -46,7 +47,7 @@ class Config:
         return self.__store_path
 
     def save_config(self) -> str:
-        with open("test.json", "w") as file:
+        with open("config.json", "w") as file:
             return json.dump(
                 obj={
                     "bot": {

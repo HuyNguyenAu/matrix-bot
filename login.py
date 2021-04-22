@@ -12,8 +12,7 @@ from config import Config
 
 
 async def main() -> None:
-    config_path = "config.json"
-    config = Config(config_path)
+    config = Config()
     store_path = config.get_store_path()
 
     if not os.path.exists(store_path):
