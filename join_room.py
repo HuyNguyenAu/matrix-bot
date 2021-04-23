@@ -1,22 +1,11 @@
 #!/usr/bin/env python3
 
 import sys
-import asyncio
 
-from config import Config
 from bot import Bot
 
-async def main() -> None:
+if __name__ == "__main__":
     room_id = sys.argv[1]
     bot = Bot()
-
-    try:
-        await bot.join_room(room_id)
-    finally:
-        await bot.close_client()
-
-if __name__ == "__main__":
-    try:
-        asyncio.run(main())
-    except KeyboardInterrupt:
-        pass
+    bot.join_room(room_id)
+    bot.close_client()
