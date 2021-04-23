@@ -13,11 +13,7 @@ class Config:
         self.__access_token = config["bot"]["access_token"]
         self.__rooms = config["bot"]["rooms"]
         self.__store_path = config["bot"]["store_path"]
-        self.__news = config["news"]
-
-    def __load_config(self, path: str) -> dict:
-        with open(path, "r") as file:
-            return json.load(file)
+        self.__news = self.__load_news(config["news"])
 
     def get_user_id(self) -> str:
         return self.__user_id
@@ -43,7 +39,10 @@ class Config:
     def get_rooms(self) -> dict:
         return self.__rooms
 
-    def get_news(self) -> dict:
+    def get_room_id(self, room_key: str) -> dict:
+        return self.__rooms[room_key]
+
+    def get_news(self) -> list:
         return self.__news
 
     def get_store_path(self) -> str:
@@ -65,3 +64,34 @@ class Config:
                     "news": self.__news
                 },
                 fp=file)
+
+    def __load_config(self, path: str) -> dict:
+        with open(path, "r") as file:
+            return json.load(file)
+
+    def __load_news(self, news: dict) -> list:
+        news_list = []
+
+        for source in news:
+            news_item = news[source]
+
+            news_list.append(
+                News(
+                    news_item["url"],
+                    news_item["room"]
+                )
+            )
+
+        return news_list
+
+
+class News:
+    def __init__(self, url: str, room: str):
+        self.__url = url
+        self.__room = room
+
+    def get_url(self):
+        return self.__url
+
+    def get_room(self):
+        return self.__room
