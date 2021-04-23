@@ -20,12 +20,11 @@ class Bot:
     def get_client(self) -> nio.AsyncClient:
         return self.__client
 
-    def get_sync(self) -> nio.SyncResponse:
-        return self.__sync
-
     def join_room(self, room_id: str) -> None:
         if not self.__is_in_room(room_id):
-            asyncio.get_event_loop().run_until_complete(self.__client.join(room_id))
+            asyncio.get_event_loop().run_until_complete(
+                self.__client.join(room_id)
+            )
 
     def get_rooms(self) -> dict:
         return self.__config.get_rooms()
@@ -36,7 +35,8 @@ class Bot:
 
         while True:
             messages = asyncio.get_event_loop().run_until_complete(
-                self.__client.room_messages(room_id, start))
+                self.__client.room_messages(room_id, start)
+            )
 
             if start == messages.end:
                 break
@@ -90,13 +90,11 @@ class Bot:
             asyncio.get_event_loop().run_until_complete(self.__client.keys_upload())
 
     def __sync_state(self) -> nio.SyncResponse:
-        reponse = asyncio.get_event_loop().run_until_complete(self.__client.sync(
-            timeout=30000, full_state=True))
+        return asyncio.get_event_loop().run_until_complete(self.__client.sync(
+            timeout=30000,
+            full_state=True
+        ))
 
-        if not isinstance(reponse, nio.SyncResponse):
-            return None
-
-        return reponse
 
     def __is_in_room(self, room_id: str) -> bool:
         if room_id in self.__get_joined_rooms():
