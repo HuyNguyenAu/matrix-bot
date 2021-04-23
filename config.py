@@ -43,6 +43,9 @@ class Config:
     def get_rooms(self) -> dict:
         return self.__rooms
 
+    def get_news(self) -> dict:
+        return self.__news
+
     def get_store_path(self) -> str:
         return self.__store_path
 
