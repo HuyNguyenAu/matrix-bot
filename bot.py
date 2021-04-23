@@ -30,6 +30,27 @@ class Bot:
     def get_rooms(self) -> dict:
         return self.__config.get_rooms()
 
+    def get_room_links(self, room_id: str) -> list:
+        links = []
+        start = self.__sync.next_batch
+
+        while True:
+            messages = asyncio.get_event_loop().run_until_complete(
+                self.__client.room_messages(room_id, start))
+
+            if start == messages.end:
+                break
+
+            start = messages.end
+
+            for text in messages.chunk:
+                if isinstance(text, nio.RoomMessageText):
+                    for line in str(text).split('\n'):
+                        if line.startswith("https://"):
+                            links.append(line)
+
+        return links
+
     def close_client(self) -> None:
         asyncio.get_event_loop().run_until_complete(self.__client.close())
 
