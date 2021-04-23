@@ -5,14 +5,14 @@ import asyncio
 
 
 class Bot:
-    def __init__(self):
+    def __init__(self, config):
         self.__client_config = nio.AsyncClientConfig(
             max_limit_exceeded=0,
             max_timeouts=0,
             store_sync_tokens=True,
             encryption_enabled=True,
         )
-        self.__config = Config()
+        self.__config = config
         self.__client = self.__load_client()
         self.__sync_keys()
         self.__sync = self.__sync_state()
@@ -26,6 +26,9 @@ class Bot:
     def join_room(self, room_id: str) -> None:
         if not self.__is_in_room(room_id):
             asyncio.get_event_loop().run_until_complete(self.__client.join(room_id))
+
+    def get_rooms(self) -> dict:
+        return self.__config.get_rooms()
 
     def close_client(self) -> None:
         asyncio.get_event_loop().run_until_complete(self.__client.close())
