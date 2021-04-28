@@ -11,10 +11,19 @@ def get_rss_news(url: str, existing_links: list) -> str:
     news = []
     new_links = []
     data = feedparser.parse(url)
+    feed_title = data.feed["title"]
 
     for entry in data.entries:
-        title = entry.title
-        link = entry.link.replace("http://", "https://")
+        title = entry["title"]
+        link_key = "link"
+
+        # Some news feeds such as Hacker News, I'd prefer to have the link
+        # to comments instead.
+
+        if feed_title == "Hacker News":
+            link_key = "comments"
+
+        link = entry[link_key].replace("http://", "https://")
 
         if link in existing_links:
             continue
@@ -25,7 +34,7 @@ def get_rss_news(url: str, existing_links: list) -> str:
     if len(news) <= 0:
         return None
 
-    news.insert(0, data.feed.title)
+    news.insert(0, feed_title)
     news.append("\n")
 
     return "\n\n".join(news)
@@ -33,21 +42,15 @@ def get_rss_news(url: str, existing_links: list) -> str:
 
 def send_news(bot: Bot, config: Config):
     for news_item in config.get_news():
-        room_id = config.get_room_id(
-            news_item.get_room()
-        )
+        room_id = config.get_room_id(news_item.get_room())
         news = get_rss_news(
-            url=news_item.get_url(),
-            existing_links=bot.get_room_links(room_id)
+            url=news_item.get_url(), existing_links=bot.get_room_links(room_id)
         )
 
         if news == None:
             continue
 
-        bot.send_message(
-            content=news,
-            room_id=room_id
-        )
+        bot.send_message(content=news, room_id=room_id)
 
 
 if __name__ == "__main__":
