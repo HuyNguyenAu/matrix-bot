@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 from config import Config
 
 import nio
@@ -5,7 +7,7 @@ import asyncio
 
 
 class Bot:
-    def __init__(self, config):
+    def __init__(self, config: Config, sync: bool = True):
         self.__client_config = nio.AsyncClientConfig(
             max_limit_exceeded=0,
             max_timeouts=0,
@@ -15,7 +17,10 @@ class Bot:
         self.__config = config
         self.__client = self.__load_client()
         self.__sync_keys()
-        self.__sync = self.__sync_state()
+        self.__sync = None
+
+        if sync:
+            self.__sync = self.__sync_state()
 
     def get_client(self) -> nio.AsyncClient:
         return self.__client
