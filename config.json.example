@@ -1,0 +1,28 @@
+{
+    "bot": {
+        "user_id": "@bot:example.com",
+        "device_name": "matrix-container",
+        "device_id": "",
+        "home_server": "https://example.com",
+        "access_token": "",
+        "store_path": "store",
+        "rooms": {
+            "tech_news_room": "!EXAMPLE:example.com",
+            "science_news_room": "!EXAMPLE:example.com"
+        }
+    },
+    "news": {
+        "hacker_news": {
+            "url": "https://news.ycombinator.com/rss",
+            "room": "tech_news_room"
+        },
+        "the_hacker_news": {
+            "url": "https://feeds.feedburner.com/TheHackersNews?format=xml",
+            "room": "tech_news_room"
+        },
+        "ars_technica_science": {
+            "url": "https://feeds.arstechnica.com/arstechnica/science",
+            "room": "science_news_room"
+        }
+    }
+}
