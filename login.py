@@ -15,6 +15,10 @@ async def main() -> None:
     config = Config()
     store_path = config.get_store_path()
 
+    print(config.get_news_json())
+
+    return
+
     if not os.path.exists(store_path):
         os.makedirs(store_path)
 

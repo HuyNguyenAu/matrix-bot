@@ -17,6 +17,8 @@ class Config:
         self.__store_path = config["bot"]["store_path"]
         self.__news = self.__load_news(config["news"])
 
+        self.__news_json = config["news"]
+
     def get_user_id(self) -> str:
         return self.__user_id
 
@@ -61,11 +63,12 @@ class Config:
                         "home_server": self.__home_server,
                         "access_token": self.__access_token,
                         "store_path": self.__store_path,
-                        "rooms": self.__rooms
+                        "rooms": self.__rooms,
                     },
-                    "news": self.__news
+                    "news": self.__news_json,
                 },
-                fp=file)
+                fp=file,
+            )
 
     def __load_config(self, path: str) -> dict:
         with open(path, "r") as file:
@@ -74,15 +77,10 @@ class Config:
     def __load_news(self, news: dict) -> list:
         news_list = []
 
-        for source in news:
-            news_item = news[source]
+        for name in news:
+            news_item = news[name]
 
-            news_list.append(
-                News(
-                    news_item["url"],
-                    news_item["room"]
-                )
-            )
+            news_list.append(News(url=news_item["url"], room=news_item["room"]))
 
         return news_list
 
