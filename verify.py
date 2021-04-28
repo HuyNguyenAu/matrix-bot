@@ -3,6 +3,11 @@
 from config import Config
 from bot import Bot
 
+import traceback
+import getpass
+import sys
+import os
+import json
 import asyncio
 import nio
 
@@ -48,7 +53,7 @@ class Callbacks(object):
                 if isinstance(resp, nio.ToDeviceError):
                     print(f"to_device failed with {resp}")
 
-            elif isinstance(event, KeyVerificationCancel):  # anytime
+            elif isinstance(event, nio.KeyVerificationCancel):  # anytime
                 # There is no need to issue a
                 # client.cancel_key_verification(tx_id, reject=False)
                 # here. The SAS flow is already cancelled.
